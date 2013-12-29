@@ -47,8 +47,8 @@ namespace FragLabs.Audio.Codecs
         /// <summary>
         /// Produces PCM samples from Opus encoded data.
         /// </summary>
-        /// <param name="inputOpusData">Opus encoded data to decode, null for dropped packet.</param>
-        /// <param name="dataLength">Length of data to decode.</param>
+        /// <param name="inputOpusData">Opus encoded data to decode, <c>null</c> for dropped packet.</param>
+        /// <param name="dataLength">Length of data to decode or skipped data if <paramref name="inputOpusData"/> is <c>null</c>.</param>
         /// <param name="decodedLength">Set to the length of the decoded sample data.</param>
         /// <returns>PCM audio samples.</returns>
         public unsafe byte[] Decode(byte[] inputOpusData, int dataLength, out int decodedLength)
@@ -58,16 +58,17 @@ namespace FragLabs.Audio.Codecs
 
             IntPtr decodedPtr;
             byte[] decoded = new byte[MaxDataBytes];
-            int frameCount = FrameCount(MaxDataBytes);
+
             int length = 0;
             fixed (byte* bdec = decoded)
             {
                 decodedPtr = new IntPtr((void*)bdec);
 
-                if (inputOpusData != null)
-                    length = API.opus_decode(_decoder, inputOpusData, dataLength, decodedPtr, frameCount, 0);
-                else
-                    length = API.opus_decode(_decoder, null, 0, decodedPtr, frameCount, (ForwardErrorCorrection) ? 1 : 0);
+                if (inputOpusData != null) {
+                    int frameCount = FrameCount(MaxDataBytes);
+                    length = API.opus_decode (_decoder, inputOpusData, dataLength, decodedPtr, frameCount, (ForwardErrorCorrection) ? 1 : 0);
+                } else
+                    length = API.opus_decode (_decoder, null, 0, decodedPtr, FrameCount(dataLength), 0);
             }
             decodedLength = length * 2;
             if (length < 0)
